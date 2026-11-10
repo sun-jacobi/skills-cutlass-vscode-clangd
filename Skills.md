@@ -167,7 +167,31 @@ Avoid this form:
 
 clangd can pass it as one malformed argument with an embedded space. Inspect `internal (cc1) args` in the verbose log if the include appears to be configured but remains ineffective.
 
-### 5. Restart and verify
+### 5. Verify CUDA compiler version macros
+
+CUTLASS features such as the SM90 Collective Builder can depend on CUDA compiler version macros that Clang does not always define during clangd fallback parsing. A typical symptom is:
+
+```text
+static assertion failed: Unsupported Toolkit for SM90 Collective Builder
+```
+
+Read the toolkit version:
+
+```bash
+nvcc --version
+```
+
+If the active fallback command does not already define them, add the reported major, minor, and build versions to `.clangd`:
+
+```yaml
+    - -D__CUDACC_VER_MAJOR__=<cuda-major>
+    - -D__CUDACC_VER_MINOR__=<cuda-minor>
+    - -D__CUDACC_VER_BUILD__=<cuda-build>
+```
+
+Use the real toolkit version. These macros influence CUTLASS feature selection and can expose or hide library code paths; do not use arbitrary values merely to silence a diagnostic.
+
+### 6. Restart and verify
 
 In VS Code:
 
@@ -227,7 +251,9 @@ CompileFlags:
     - -I/path/to/repository/examples/common/
     - -isystem
     - /path/to/cuda/targets/<target>/include/cccl
+    - -D__CUDACC_VER_MAJOR__=<cuda-major>
+    - -D__CUDACC_VER_MINOR__=<cuda-minor>
+    - -D__CUDACC_VER_BUILD__=<cuda-build>
 ```
 
 These absolute paths are environment-specific. Detect the active clangd resource directory, CUDA home, target directory, and CCCL directory when applying the workflow elsewhere.
-
